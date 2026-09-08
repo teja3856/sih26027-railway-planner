@@ -17,8 +17,7 @@ services:
     rootDir: backend
     plan: free
     buildCommand: npm install && npx prisma generate && npm run build
-    preDeployCommand: npx prisma migrate deploy
-    startCommand: npm run start
+    startCommand: npx prisma migrate deploy && npm run start
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
@@ -33,14 +32,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: PYTHON_AI_URL
-        fromService:
-          type: web
-          name: sih-ai-optimizer
-          property: host
+        value: https://sih-ai-optimizer.onrender.com
 
 databases:
   # Managed PostgreSQL Database
   - name: sih-railway-db
     plan: free
     databaseName: sih_railway_db
-    user: postgres
+    postgresMajorVersion: "16"
