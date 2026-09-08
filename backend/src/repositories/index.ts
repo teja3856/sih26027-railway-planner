@@ -71,6 +71,26 @@ class ResilientRepository implements IDataRepository {
             },
           });
         }
+
+        // Ensure system initialization audit log exists
+        const auditCount = await prisma.auditLog.count();
+        if (auditCount === 0) {
+          for (const a of store.auditLogs) {
+            await prisma.auditLog.create({
+              data: {
+                id: a.id,
+                userId: a.userId,
+                username: a.username,
+                userRole: a.userRole as any,
+                action: a.action,
+                entityType: a.entityType,
+                entityId: a.entityId,
+                details: a.details,
+                timestamp: a.timestamp,
+              },
+            });
+          }
+        }
       }
 
       this.activeRepo = prismaRepo;

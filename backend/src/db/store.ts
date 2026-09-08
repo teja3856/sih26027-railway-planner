@@ -371,6 +371,21 @@ class DataStore {
         updatedAt: '2026-09-08 08:30:00',
       },
     ];
+
+    // 15. Initial Audit Log
+    this.auditLogs = [
+      {
+        id: 'aud-001',
+        userId: 'system',
+        username: 'SYSTEM',
+        userRole: 'ADMIN',
+        action: 'SYSTEM_INITIALIZATION',
+        entityType: 'SYSTEM',
+        entityId: 'sys-init',
+        details: 'Indian Railways Automated Block Planning System initialized with synthetic TMS, SMMS, TDMS datasets and 8-tier conflict matrix.',
+        timestamp: '2026-09-08 00:00:00',
+      },
+    ];
   }
 }
 

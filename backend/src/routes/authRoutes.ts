@@ -16,11 +16,33 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req: AuthRe
   const user = await repository.getUserByUsername(identifier);
 
   if (!user) {
+    await repository.addAuditLog({
+      id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      userId: 'anonymous',
+      username: identifier || 'anonymous',
+      userRole: 'ANONYMOUS',
+      action: 'LOGIN_FAILED',
+      entityType: 'USER',
+      entityId: identifier || 'unknown',
+      details: `Failed login attempt for identifier "${identifier}" (user not found)`,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    });
     return res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid username or password' } });
   }
 
   const isPasswordValid = await comparePassword(password, user.passwordHash);
   if (!isPasswordValid) {
+    await repository.addAuditLog({
+      id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      userId: user.id,
+      username: user.username,
+      userRole: user.role,
+      action: 'LOGIN_FAILED',
+      entityType: 'USER',
+      entityId: user.id,
+      details: `Failed login attempt for user ${user.username} (${user.email}) due to invalid password`,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    });
     return res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid username or password' } });
   }
 
@@ -32,14 +54,14 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req: AuthRe
 
   // Audit log
   await repository.addAuditLog({
-    id: `aud-${Date.now()}`,
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     userId: user.id,
     username: user.username,
     userRole: user.role,
-    action: 'USER_LOGIN',
+    action: 'LOGIN_SUCCESS',
     entityType: 'USER',
     entityId: user.id,
-    details: `User ${user.name} logged in successfully with role ${user.role}`,
+    details: `User ${user.name} (${user.email}) logged in successfully with role ${user.role}`,
     timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
   });
 
@@ -75,6 +97,19 @@ router.post('/demo-session', authLimiter, async (req: AuthRequest, res: Response
     env.JWT_SECRET,
     { expiresIn: '24h' }
   );
+
+  // Audit log
+  await repository.addAuditLog({
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: user.id,
+    username: user.username,
+    userRole: user.role,
+    action: 'LOGIN_SUCCESS',
+    entityType: 'USER',
+    entityId: user.id,
+    details: `Silent demo session initialized for ${user.name} with role ${user.role}`,
+    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+  });
 
   const { passwordHash, ...userWithoutPassword } = user;
 

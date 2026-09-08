@@ -12,12 +12,12 @@ router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Respon
   const plans = await repository.getPlans();
 
   const totalAssets = assets.length;
-  const availableAssets = assets.filter(a => a.conditionScore >= 50).length;
-  const criticalAssets = assets.filter(a => a.criticality === 'CRITICAL').length;
+  const availableAssets = assets.filter((a: any) => a.conditionScore >= 50).length;
+  const criticalAssets = assets.filter((a: any) => a.criticality === 'CRITICAL').length;
   
-  const pendingMaintenance = tasks.filter(t => t.status === 'PENDING').length;
-  const overdueMaintenance = tasks.filter(t => t.urgency === 'CRITICAL' || t.status === 'PRIORITIZED').length;
-  const activeBlocks = blocks.filter(b => b.approvalStatus === 'APPROVED').length;
+  const pendingMaintenance = tasks.filter((t: any) => t.status === 'PENDING').length;
+  const overdueMaintenance = tasks.filter((t: any) => t.urgency === 'CRITICAL' || t.status === 'PRIORITIZED').length;
+  const activeBlocks = blocks.filter((b: any) => b.approvalStatus === 'APPROVED').length;
   
   const currentPlan = plans[0];
   const conflictsCount = currentPlan ? currentPlan.metrics.conflictCount : 0;
@@ -26,9 +26,9 @@ router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Respon
 
   // Department task counts
   const departmentBreakdown = {
-    ENGINEERING: tasks.filter(t => t.department === 'ENGINEERING').length,
-    TRACTION_DISTRIBUTION: tasks.filter(t => t.department === 'TRACTION_DISTRIBUTION').length,
-    SIGNAL_TELECOM: tasks.filter(t => t.department === 'SIGNAL_TELECOM').length,
+    ENGINEERING: tasks.filter((t: any) => t.department === 'ENGINEERING').length,
+    TRACTION_DISTRIBUTION: tasks.filter((t: any) => t.department === 'TRACTION_DISTRIBUTION').length,
+    SIGNAL_TELECOM: tasks.filter((t: any) => t.department === 'SIGNAL_TELECOM').length,
   };
 
   const availabilityTimeline = [

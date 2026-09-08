@@ -71,14 +71,14 @@ router.post('/', authenticateToken, requireRole('MAINTENANCE_ENGINEER', 'ADMIN')
 
   // Audit log
   await repository.addAuditLog({
-    id: `aud-${Date.now()}`,
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     userId: req.user?.id || 'usr-3',
     username: req.user?.username || 'engineer',
     userRole: req.user?.role || 'MAINTENANCE_ENGINEER',
-    action: 'CREATE_MAINTENANCE_TASK',
+    action: 'TASK_CREATED',
     entityType: 'MAINTENANCE_TASK',
     entityId: newTask.taskId,
-    details: `Created maintenance task ${newTask.taskId} for asset ${asset.assetCode} (${newTask.department})`,
+    details: `Created maintenance task ${newTask.taskId} for asset ${asset.assetCode} (${newTask.department}, priority score: ${newTask.priorityScore})`,
     timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
   });
 
@@ -100,6 +100,19 @@ router.patch('/:id', authenticateToken, requireRole('MAINTENANCE_ENGINEER', 'OPE
     ...(preferredWindowStart && { preferredWindowStart }),
     ...(preferredWindowEnd && { preferredWindowEnd }),
     ...(priorityScore !== undefined && { priorityScore: Number(priorityScore) }),
+  });
+
+  // Audit log
+  await repository.addAuditLog({
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: req.user?.id || 'usr-3',
+    username: req.user?.username || 'engineer',
+    userRole: req.user?.role || 'MAINTENANCE_ENGINEER',
+    action: 'TASK_UPDATED',
+    entityType: 'MAINTENANCE_TASK',
+    entityId: task.taskId,
+    details: `Updated task ${task.taskId} (${status ? `status: ${status}` : ''}${priorityScore !== undefined ? `priorityScore: ${priorityScore}` : ''})`,
+    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
   });
 
   res.json(updatedTask);

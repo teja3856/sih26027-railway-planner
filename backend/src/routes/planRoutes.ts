@@ -67,14 +67,14 @@ router.patch('/:id/blocks/:blockId', authenticateToken, requireRole('OPERATIONS_
 
   // Audit log
   await repository.addAuditLog({
-    id: `aud-${Date.now()}`,
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     userId: req.user?.id || 'usr-2',
     username: req.user?.username || 'controller',
     userRole: req.user?.role || 'OPERATIONS_CONTROLLER',
-    action: 'MODIFY_MAINTENANCE_BLOCK',
+    action: 'BLOCK_MODIFIED',
     entityType: 'MAINTENANCE_BLOCK',
     entityId: block.id,
-    details: `Modified block ${block.id} timing to ${newStart}. Recalculated score: ${updatedBlock?.optimizationScore}`,
+    details: `Modified block ${block.id} timing to ${newStart}. Recalculated optimization score: ${updatedBlock?.optimizationScore}/100`,
     timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
   });
 
@@ -92,14 +92,14 @@ router.post('/:id/approve', authenticateToken, requireRole('OPERATIONS_CONTROLLE
 
   // Audit log
   await repository.addAuditLog({
-    id: `aud-${Date.now()}`,
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     userId: req.user?.id || 'usr-2',
     username: req.user?.username || 'controller',
     userRole: req.user?.role || 'OPERATIONS_CONTROLLER',
-    action: 'APPROVE_BLOCK_PLAN',
+    action: 'PLAN_APPROVED',
     entityType: 'BLOCK_PLAN',
     entityId: plan.id,
-    details: `Approved ${plan.horizonType} block plan ${plan.id} for execution`,
+    details: `Approved ${plan.horizonType} block plan ${plan.id} for execution across corridor sections`,
     timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
   });
 
@@ -117,11 +117,11 @@ router.post('/:id/reject', authenticateToken, requireRole('OPERATIONS_CONTROLLER
 
   // Audit log
   await repository.addAuditLog({
-    id: `aud-${Date.now()}`,
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     userId: req.user?.id || 'usr-2',
     username: req.user?.username || 'controller',
     userRole: req.user?.role || 'OPERATIONS_CONTROLLER',
-    action: 'REJECT_BLOCK_PLAN',
+    action: 'PLAN_REJECTED',
     entityType: 'BLOCK_PLAN',
     entityId: plan.id,
     details: `Rejected ${plan.horizonType} block plan ${plan.id}`,

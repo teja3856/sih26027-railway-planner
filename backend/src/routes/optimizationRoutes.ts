@@ -107,14 +107,14 @@ router.post('/generate-plan', authenticateToken, requireRole('OPERATIONS_CONTROL
 
     // Audit log
     await repository.addAuditLog({
-      id: `aud-${Date.now()}`,
+      id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       userId: req.user?.id || 'usr-2',
       username: req.user?.username || 'controller',
       userRole: req.user?.role || 'OPERATIONS_CONTROLLER',
-      action: 'GENERATE_AUTOMATIC_BLOCK_PLAN',
+      action: 'OPTIMIZATION_EXECUTED',
       entityType: 'BLOCK_PLAN',
       entityId: newPlan.id,
-      details: `Generated ${horizon} automatic block plan with Python AI Solver (Score: ${newPlan.totalOptimizationScore}/100, Joint Blocks: ${newPlan.metrics.jointBlocksCount})`,
+      details: `Executed ${horizon} multi-objective AI optimization with Python AI Solver (Score: ${newPlan.totalOptimizationScore}/100, Blocks: ${newPlan.metrics.totalBlocks}, Joint: ${newPlan.metrics.jointBlocksCount})`,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
     });
 
@@ -212,6 +212,19 @@ router.post('/generate-plan', authenticateToken, requireRole('OPERATIONS_CONTROL
     await repository.createPlan(fallbackPlan);
     await repository.setBlocks(generatedBlocks);
 
+    // Audit log
+    await repository.addAuditLog({
+      id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      userId: req.user?.id || 'usr-2',
+      username: req.user?.username || 'controller',
+      userRole: req.user?.role || 'OPERATIONS_CONTROLLER',
+      action: 'OPTIMIZATION_EXECUTED',
+      entityType: 'BLOCK_PLAN',
+      entityId: fallbackPlan.id,
+      details: `Executed ${horizon} multi-objective optimization (Score: ${fallbackPlan.totalOptimizationScore}/100, Blocks: ${fallbackPlan.metrics.totalBlocks})`,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    });
+
     res.json({
       plan: fallbackPlan,
       blocks: generatedBlocks,
@@ -232,14 +245,14 @@ router.put('/weights', authenticateToken, requireRole('ADMIN'), validateBody(wei
 
   // Audit log
   await repository.addAuditLog({
-    id: `aud-${Date.now()}`,
+    id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     userId: req.user?.id || 'usr-1',
     username: req.user?.username || 'admin',
     userRole: req.user?.role || 'ADMIN',
-    action: 'UPDATE_OPTIMIZATION_WEIGHTS',
+    action: 'OBJECTIVE_WEIGHTS_UPDATED',
     entityType: 'OPTIMIZATION_WEIGHT',
     entityId: updatedWeights.id,
-    details: `Updated optimization weights: Criticality=${updatedWeights.assetCriticalityWeight}, Urgency=${updatedWeights.maintenanceUrgencyWeight}, Delay=${updatedWeights.delayWeight}`,
+    details: `Updated optimization objective weights: Criticality=${updatedWeights.assetCriticalityWeight}, Urgency=${updatedWeights.maintenanceUrgencyWeight}, TrainImpact=${updatedWeights.trainImpactWeight}, Delay=${updatedWeights.delayWeight}`,
     timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
   });
 
