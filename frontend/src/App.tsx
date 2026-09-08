@@ -270,7 +270,7 @@ export function App() {
   // RUN OPTIMIZER
   const handleGeneratePlan = async (horizon: 'WEEKLY' | 'MONTHLY') => {
     if (currentRole === 'MAINTENANCE_ENGINEER') {
-      showToast('Permission Denied: Only Operations Controllers and Admins can generate block schedules.');
+      showToast('Optimization execution is restricted to authorized operations users.');
       return;
     }
     setIsDemoLoading(true);
