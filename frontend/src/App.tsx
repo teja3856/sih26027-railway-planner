@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { UserRole } from './types';
 import { TabType, Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
-import { BannerDisclaimer } from './components/BannerDisclaimer';
 
 import { Dashboard } from './components/Dashboard';
 import { CorridorMap } from './components/CorridorMap';
@@ -293,9 +292,6 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Prototype Disclaimer Banner */}
-      <BannerDisclaimer />
-
       {/* Main Header with User Role & Controls */}
       <Header
         currentRole={currentRole}
