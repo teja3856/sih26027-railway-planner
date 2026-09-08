@@ -37,8 +37,22 @@ export class PrismaRepository implements IDataRepository {
     };
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const u = await prisma.user.findUnique({ where: { username } });
+  async getUserByUsername(identifier: string): Promise<User | undefined> {
+    const term = identifier.toLowerCase().trim();
+    let usernameQuery = term;
+    if (term === 'admin') usernameQuery = 'abcadmin';
+    if (term === 'controller') usernameQuery = 'abccontrol';
+    if (term === 'engineer_eng') usernameQuery = 'abceng';
+
+    const u = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: { equals: usernameQuery, mode: 'insensitive' } },
+          { email: { equals: term, mode: 'insensitive' } },
+          { username: { equals: term, mode: 'insensitive' } },
+        ],
+      },
+    });
     if (!u) return undefined;
     return {
       id: u.id,

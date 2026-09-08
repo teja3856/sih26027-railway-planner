@@ -32,8 +32,12 @@ export const validateBody = (schema: z.ZodSchema) => {
 
 // Schemas
 export const loginSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
+  username: z.string().optional(),
+  email: z.string().optional(),
   password: z.string().min(1, 'Password is required'),
+}).refine(data => !!(data.username || data.email), {
+  message: 'Username or email is required',
+  path: ['email'],
 });
 
 export const createTaskSchema = z.object({

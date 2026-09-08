@@ -32,7 +32,12 @@ api.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (username: string, password: string) => api.post('/auth/login', { username, password }),
+  login: (credentials: { username?: string; email?: string; password: string } | string, maybePassword?: string) => {
+    if (typeof credentials === 'string') {
+      return api.post('/auth/login', { username: credentials, email: credentials, password: maybePassword });
+    }
+    return api.post('/auth/login', credentials);
+  },
   getDemoSession: (role?: string) => api.post('/auth/demo-session', { role: role || 'ADMIN' }),
   getMe: () => api.get('/auth/me'),
   logout: () => {

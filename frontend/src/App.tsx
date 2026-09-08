@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { UserRole } from './types';
 import { TabType, Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { LoginModal } from './components/LoginModal';
 
 import { Dashboard } from './components/Dashboard';
 import { CorridorMap } from './components/CorridorMap';
@@ -27,7 +28,24 @@ import {
 } from './services/api';
 
 export function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    try {
+      const savedUser = localStorage.getItem('sih_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed.role) return parsed.role;
+      }
+    } catch {}
+    return 'ADMIN';
+  });
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      const savedUser = localStorage.getItem('sih_user');
+      if (savedUser) return JSON.parse(savedUser);
+    } catch {}
+    return null;
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDemoLoading, setIsDemoLoading] = useState<boolean>(false);
@@ -102,12 +120,19 @@ export function App() {
   const initSessionAndLoad = useCallback(async (roleToUse: UserRole) => {
     try {
       let token = localStorage.getItem('sih_auth_token');
-      if (!token) {
+      let userStr = localStorage.getItem('sih_user');
+      if (token && userStr) {
+        const savedUser = JSON.parse(userStr);
+        setCurrentUser(savedUser);
+        if (savedUser.role) setCurrentRole(savedUser.role);
+      } else {
         const sessionRes = await authApi.getDemoSession(roleToUse);
         token = sessionRes.data.token;
         if (token) {
           localStorage.setItem('sih_auth_token', token);
           localStorage.setItem('sih_user', JSON.stringify(sessionRes.data.user));
+          setCurrentUser(sessionRes.data.user);
+          setCurrentRole(sessionRes.data.user.role || roleToUse);
         }
       }
       await loadAllData();
@@ -118,6 +143,9 @@ export function App() {
         const fallbackRes = await authApi.getDemoSession(roleToUse);
         if (fallbackRes.data.token) {
           localStorage.setItem('sih_auth_token', fallbackRes.data.token);
+          localStorage.setItem('sih_user', JSON.stringify(fallbackRes.data.user));
+          setCurrentUser(fallbackRes.data.user);
+          setCurrentRole(fallbackRes.data.user.role || roleToUse);
           await loadAllData();
         }
       } catch (retryErr) {
@@ -129,9 +157,9 @@ export function App() {
   // Initial silent startup
   useEffect(() => {
     initSessionAndLoad(currentRole);
-  }, [initSessionAndLoad, currentRole]);
+  }, [initSessionAndLoad]);
 
-  // Silent role switching: seamlessly obtain signed JWT for the selected role and refresh data
+  // Role switching: seamlessly obtain signed JWT for the selected role and refresh data
   const handleRoleChange = async (newRole: UserRole) => {
     setCurrentRole(newRole);
     try {
@@ -139,6 +167,8 @@ export function App() {
       if (sessionRes.data.token) {
         localStorage.setItem('sih_auth_token', sessionRes.data.token);
         localStorage.setItem('sih_user', JSON.stringify(sessionRes.data.user));
+        setCurrentUser(sessionRes.data.user);
+        setCurrentRole(sessionRes.data.user.role);
       }
       await loadAllData();
       showToast(`Switched active role to ${newRole}`);
@@ -146,6 +176,25 @@ export function App() {
       console.error('Role switch failed:', err);
       showToast(`Role switched to ${newRole}`);
     }
+  };
+
+  // Dedicated Login Handler for Evaluators / Faculty
+  const handleLoginSuccess = async (user: any, token: string) => {
+    localStorage.setItem('sih_auth_token', token);
+    localStorage.setItem('sih_user', JSON.stringify(user));
+    setCurrentUser(user);
+    if (user.role) {
+      setCurrentRole(user.role);
+    }
+    await loadAllData();
+    showToast(`Authenticated as ${user.name} (${user.role})`);
+  };
+
+  const handleLogout = async () => {
+    authApi.logout();
+    setCurrentUser(null);
+    await initSessionAndLoad('ADMIN');
+    showToast('Logged out. Switched to Default Demo Session.');
   };
 
   // Safe Error Message Extraction Helper
@@ -295,9 +344,19 @@ export function App() {
       {/* Main Header with User Role & Controls */}
       <Header
         currentRole={currentRole}
+        currentUser={currentUser}
         onRoleChange={handleRoleChange}
         onRunDemo={handleRunDemoScenario}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onLogout={handleLogout}
         isDemoLoading={isDemoLoading}
+      />
+
+      {/* On-Demand Login Modal for Faculty / Judges */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       {/* Content Area */}

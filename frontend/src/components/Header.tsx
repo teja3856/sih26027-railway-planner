@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
-import { Train, Play, UserCheck, Bell, RefreshCw } from 'lucide-react';
+import { Train, Play, UserCheck, Bell, RefreshCw, Key, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   currentRole: UserRole;
+  currentUser?: any;
   onRoleChange: (role: UserRole) => void;
   onRunDemo: () => void;
+  onOpenLogin: () => void;
+  onLogout?: () => void;
   isDemoLoading: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
+  currentUser,
   onRoleChange,
   onRunDemo,
+  onOpenLogin,
+  onLogout,
   isDemoLoading,
 }) => {
   const [time, setTime] = useState<string>('');
@@ -50,25 +56,25 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         {/* 1-Click Run Synthetic Demo Scenario Button */}
         <button
           onClick={onRunDemo}
           disabled={isDemoLoading}
-          className="relative group bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md shadow-emerald-600/30 flex items-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
+          className="relative group bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-md shadow-emerald-600/30 flex items-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50"
         >
           {isDemoLoading ? (
             <RefreshCw className="w-4 h-4 animate-spin text-white" />
           ) : (
             <Play className="w-4 h-4 fill-white text-white" />
           )}
-          <span>{isDemoLoading ? 'OPTIMIZING DEMO...' : 'RUN SYNTHETIC DEMO SCENARIO'}</span>
+          <span>{isDemoLoading ? 'OPTIMIZING...' : 'RUN DEMO SCENARIO'}</span>
         </button>
 
         {/* Role Switcher with Silent Demo Authentication */}
         <div className="flex items-center bg-slate-800/80 p-1 rounded-lg border border-slate-700">
-          <UserCheck className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1" />
-          <span className="text-[11px] font-semibold text-slate-400 mr-2">ROLE:</span>
+          <UserCheck className="w-3.5 h-3.5 text-slate-400 ml-1.5 mr-1" />
+          <span className="text-[11px] font-semibold text-slate-400 mr-1.5">ROLE:</span>
           {(['ADMIN', 'OPERATIONS_CONTROLLER', 'MAINTENANCE_ENGINEER'] as UserRole[]).map((role) => (
             <button
               key={role}
@@ -84,8 +90,20 @@ export const Header: React.FC<HeaderProps> = ({
           ))}
         </div>
 
+        {/* On-Demand Login / Account Gateway Button */}
+        <button
+          onClick={onOpenLogin}
+          className="flex items-center space-x-1.5 bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-sky-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 hover:border-sky-500/40 transition-all shadow-sm"
+          title="Login with SIH Demo Credentials"
+        >
+          <Key className="w-3.5 h-3.5 text-sky-400" />
+          <span className="font-mono text-[11px]">
+            {currentUser?.email ? currentUser.email.split('@')[0] : 'Sign In'}
+          </span>
+        </button>
+
         {/* Live Clock & Notifications */}
-        <div className="hidden lg:flex items-center space-x-3 text-xs font-mono text-slate-400 border-l border-slate-800 pl-4">
+        <div className="hidden lg:flex items-center space-x-2.5 text-xs font-mono text-slate-400 border-l border-slate-800 pl-3">
           <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800 text-sky-400 font-bold">
             {time || '17:00:00'}
           </div>

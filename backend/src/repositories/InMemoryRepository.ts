@@ -16,8 +16,15 @@ export class InMemoryRepository implements IDataRepository {
     return store.users.find(u => u.id === id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return store.users.find(u => u.username === username);
+  async getUserByUsername(identifier: string): Promise<User | undefined> {
+    const term = identifier.toLowerCase().trim();
+    return store.users.find(u =>
+      u.username.toLowerCase() === term ||
+      u.email.toLowerCase() === term ||
+      (term === 'admin' && u.username === 'abcadmin') ||
+      (term === 'controller' && u.username === 'abccontrol') ||
+      (term === 'engineer_eng' && u.username === 'abceng')
+    );
   }
 
   async getAssets(filter?: { department?: string; corridorId?: string; criticality?: string; hasDefect?: boolean }): Promise<Asset[]> {

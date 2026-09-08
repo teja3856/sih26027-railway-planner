@@ -11,8 +11,9 @@ const router = Router();
 
 // POST /api/auth/login
 router.post('/login', authLimiter, validateBody(loginSchema), async (req: AuthRequest, res: Response) => {
-  const { username, password } = req.body;
-  const user = await repository.getUserByUsername(username);
+  const identifier = String(req.body.email || req.body.username || '').trim();
+  const { password } = req.body;
+  const user = await repository.getUserByUsername(identifier);
 
   if (!user) {
     return res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid username or password' } });
