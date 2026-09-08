@@ -3,6 +3,7 @@ import { InMemoryRepository, repository as inMemoryRepo } from './InMemoryReposi
 import { PrismaRepository } from './PrismaRepository';
 import { prisma } from '../db/prismaClient';
 import { env } from '../config/env';
+import { store } from '../db/store';
 
 export { IDataRepository };
 
@@ -46,6 +47,30 @@ class ResilientRepository implements IDataRepository {
         console.log('📦 PostgreSQL database is empty. Seeding demo dataset...');
         await prismaRepo.seedData();
         console.log('✅ PostgreSQL database seeded successfully.');
+      } else {
+        // Ensure demo accounts exist and are up to date with correct bcrypt password hashes
+        for (const u of store.users) {
+          await prisma.user.upsert({
+            where: { id: u.id },
+            update: {
+              username: u.username,
+              name: u.name,
+              email: u.email,
+              passwordHash: u.passwordHash,
+              role: u.role as any,
+              department: u.department as any,
+            },
+            create: {
+              id: u.id,
+              username: u.username,
+              name: u.name,
+              email: u.email,
+              passwordHash: u.passwordHash,
+              role: u.role as any,
+              department: u.department as any,
+            },
+          });
+        }
       }
 
       this.activeRepo = prismaRepo;
