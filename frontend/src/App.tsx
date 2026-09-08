@@ -149,11 +149,31 @@ export function App() {
     }
   };
 
+  // Safe Error Message Extraction Helper
+  const getErrorMessage = (err: any, fallback: string): string => {
+    if (err?.response?.data?.error?.message) {
+      return err.response.data.error.message;
+    }
+    if (err?.response?.data?.message) {
+      return err.response.data.message;
+    }
+    if (err?.message) {
+      return err.message;
+    }
+    return fallback;
+  };
+
   // 1-CLICK SYNTHETIC DEMO SCENARIO EXECUTION
   const handleRunDemoScenario = async () => {
+    if (currentRole === 'MAINTENANCE_ENGINEER') {
+      showToast('Action Restricted: Automated block optimization requires Operations Controller or Admin role.');
+      return;
+    }
     setIsDemoLoading(true);
     try {
-      await syntheticApi.seed();
+      if (currentRole === 'ADMIN') {
+        await syntheticApi.seed();
+      }
       const optRes = await optimizationApi.generatePlan({
         horizonType: 'WEEKLY',
         startDate: '2026-09-09',
@@ -163,12 +183,13 @@ export function App() {
       await loadAllData();
       setActiveTab('dashboard');
 
-      const before = optRes.data.plan?.beforeMetrics?.totalDelayMinutes || 135;
-      const after = optRes.data.plan?.metrics?.totalDelayMinutes || 27;
+      const before = optRes.data?.plan?.beforeMetrics?.totalDelayMinutes || 135;
+      const after = optRes.data?.plan?.metrics?.totalDelayMinutes || 27;
       showToast(`✨ Demo Scenario Executed! Passenger delay reduced from ${before} min to ${after} min.`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Demo execution failed', err);
-      showToast('Demo execution failed. Please check backend connection.');
+      const msg = getErrorMessage(err, 'Demo execution failed. Please check backend connection.');
+      showToast(msg);
     } finally {
       setIsDemoLoading(false);
     }
@@ -180,8 +201,9 @@ export function App() {
       await tasksApi.createTask(taskData);
       await loadAllData();
       showToast('Task created & prioritized successfully.');
-    } catch (err) {
-      showToast('Failed to create task.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed to create task.');
+      showToast(msg);
     }
   };
 
@@ -191,21 +213,27 @@ export function App() {
       await assetsApi.reportDefect(assetId, defectData);
       await loadAllData();
       showToast('Critical defect reported & speed restriction recorded.');
-    } catch (err) {
-      showToast('Failed to report defect.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed to report defect.');
+      showToast(msg);
     }
   };
 
   // RUN OPTIMIZER
   const handleGeneratePlan = async (horizon: 'WEEKLY' | 'MONTHLY') => {
+    if (currentRole === 'MAINTENANCE_ENGINEER') {
+      showToast('Permission Denied: Only Operations Controllers and Admins can generate block schedules.');
+      return;
+    }
     setIsDemoLoading(true);
     try {
       await optimizationApi.generatePlan({ horizonType: horizon });
       await loadAllData();
       setActiveTab('optimizer');
       showToast(`Generated ${horizon} automatic block schedule.`);
-    } catch (err) {
-      showToast('Optimization execution failed.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Optimization execution failed.');
+      showToast(msg);
     } finally {
       setIsDemoLoading(false);
     }
@@ -213,12 +241,17 @@ export function App() {
 
   // UPDATE OPTIMIZATION WEIGHTS
   const handleUpdateWeights = async (newWeights: any) => {
+    if (currentRole !== 'ADMIN') {
+      showToast('Permission Denied: Only Administrators can update optimization weights.');
+      return;
+    }
     try {
       await optimizationApi.updateWeights(newWeights);
       await loadAllData();
       showToast('Optimization weights updated successfully.');
-    } catch (err) {
-      showToast('Failed updating weights.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed updating weights.');
+      showToast(msg);
     }
   };
 
@@ -228,8 +261,9 @@ export function App() {
       await plansApi.modifyBlock(planId, blockId, patchData);
       await loadAllData();
       showToast('Block timing modified & metrics recalculated.');
-    } catch (err) {
-      showToast('Failed modifying block.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed modifying block.');
+      showToast(msg);
     }
   };
 
@@ -239,8 +273,9 @@ export function App() {
       await plansApi.approvePlan(planId);
       await loadAllData();
       showToast('Block plan approved & locked into COA schedule.');
-    } catch (err) {
-      showToast('Failed approving plan.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed approving plan.');
+      showToast(msg);
     }
   };
 
@@ -250,8 +285,9 @@ export function App() {
       await plansApi.rejectPlan(planId);
       await loadAllData();
       showToast('Block plan rejected.');
-    } catch (err) {
-      showToast('Failed rejecting plan.');
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed rejecting plan.');
+      showToast(msg);
     }
   };
 
@@ -321,6 +357,7 @@ export function App() {
               plans={plans}
               blocks={blocks}
               weights={weights}
+              currentRole={currentRole}
               onGeneratePlan={handleGeneratePlan}
               onUpdateWeights={handleUpdateWeights}
               isOptimizing={isDemoLoading}

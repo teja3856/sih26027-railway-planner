@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Cpu, Play, Sliders, CheckCircle2, AlertTriangle, Sparkles, Layers, ArrowRight } from 'lucide-react';
-import { BlockPlan, MaintenanceBlock, OptimizationWeight } from '../types';
+import { Cpu, Play, Sliders, CheckCircle2, AlertTriangle, Sparkles, Layers, ArrowRight, Lock } from 'lucide-react';
+import { BlockPlan, MaintenanceBlock, OptimizationWeight, UserRole } from '../types';
 
 interface OptimizerStudioProps {
   plans: BlockPlan[];
   blocks: MaintenanceBlock[];
   weights: OptimizationWeight;
+  currentRole?: UserRole;
   onGeneratePlan: (horizon: 'WEEKLY' | 'MONTHLY') => void;
   onUpdateWeights: (newWeights: any) => void;
   isOptimizing: boolean;
@@ -15,12 +16,16 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
   plans,
   blocks,
   weights,
+  currentRole = 'ADMIN',
   onGeneratePlan,
   onUpdateWeights,
   isOptimizing,
 }) => {
   const [horizon, setHorizon] = useState<'WEEKLY' | 'MONTHLY'>('WEEKLY');
   const [showWeightsModal, setShowWeightsModal] = useState<boolean>(false);
+
+  const canGeneratePlan = currentRole === 'ADMIN' || currentRole === 'OPERATIONS_CONTROLLER';
+  const canUpdateWeights = currentRole === 'ADMIN';
 
   // Weights Form state
   const [tempWeights, setTempWeights] = useState({ ...weights });
@@ -29,12 +34,26 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
 
   const handleWeightsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUpdateWeights) return;
     onUpdateWeights(tempWeights);
     setShowWeightsModal(false);
   };
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-110px)]">
+      {/* Role Restriction Banner for Maintenance Engineer */}
+      {!canGeneratePlan && (
+        <div className="bg-amber-950/40 border border-amber-500/30 rounded-xl p-4 text-xs text-amber-300 flex items-start space-x-3 shadow-md">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <div className="font-bold text-amber-200">Role View-Only Mode (Maintenance Engineer)</div>
+            <p className="text-amber-300/90 leading-relaxed">
+              You are currently viewing block schedules in inspection mode. Generating automatic multi-department corridor block schedules or modifying locked timetables requires an <strong>Operations Controller</strong> or <strong>Administrator</strong> role. To request track work, submit tasks via the <strong>Department Work & Tasks</strong> tab.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Top Banner Control Panel */}
       <div className="bg-gradient-to-r from-slate-900 via-sky-950/60 to-slate-900 border border-sky-500/40 rounded-2xl p-6 shadow-xl flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div className="space-y-1">
@@ -83,14 +102,27 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
           </button>
 
           {/* Generate Button */}
-          <button
-            onClick={() => onGeneratePlan(horizon)}
-            disabled={isOptimizing}
-            className="bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center space-x-2 shadow-lg shadow-sky-600/30 disabled:opacity-50 transition-all transform active:scale-95"
-          >
-            <Cpu className="w-4 h-4" />
-            <span>{isOptimizing ? 'RUNNING PYTHON SOLVER...' : `GENERATE ${horizon} BLOCK PLAN`}</span>
-          </button>
+          {canGeneratePlan ? (
+            <button
+              onClick={() => onGeneratePlan(horizon)}
+              disabled={isOptimizing}
+              className="bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center space-x-2 shadow-lg shadow-sky-600/30 disabled:opacity-50 transition-all transform active:scale-95"
+            >
+              <Cpu className="w-4 h-4" />
+              <span>{isOptimizing ? 'RUNNING PYTHON SOLVER...' : `GENERATE ${horizon} BLOCK PLAN`}</span>
+            </button>
+          ) : (
+            <div className="relative group">
+              <button
+                disabled
+                className="bg-slate-800/80 border border-slate-700 text-slate-500 text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center space-x-2 cursor-not-allowed"
+                title="Generating block plans requires Operations Controller or Admin role"
+              >
+                <Lock className="w-4 h-4 text-amber-500" />
+                <span>RESTRICTED (CONTROLLER/ADMIN ONLY)</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -207,6 +239,15 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
               Adjust objective function parameters used by the Python solver engine.
             </p>
 
+            {!canUpdateWeights && (
+              <div className="bg-sky-950/50 border border-sky-500/30 rounded-lg p-3 text-xs text-sky-300 flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 text-sky-400 shrink-0" />
+                <span>
+                  <strong>View Mode:</strong> Global optimization weights can only be modified and saved by <strong>Administrators</strong>.
+                </span>
+              </div>
+            )}
+
             <form onSubmit={handleWeightsSubmit} className="space-y-4 text-xs font-mono">
               <div className="space-y-3">
                 <div>
@@ -219,6 +260,7 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
                     min="0"
                     max="1"
                     step="0.05"
+                    disabled={!canUpdateWeights}
                     value={tempWeights.assetCriticalityWeight}
                     onChange={(e) => setTempWeights({ ...tempWeights, assetCriticalityWeight: Number(e.target.value) })}
                     className="w-full"
@@ -235,6 +277,7 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
                     min="0"
                     max="1"
                     step="0.05"
+                    disabled={!canUpdateWeights}
                     value={tempWeights.maintenanceUrgencyWeight}
                     onChange={(e) => setTempWeights({ ...tempWeights, maintenanceUrgencyWeight: Number(e.target.value) })}
                     className="w-full"
@@ -251,6 +294,7 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
                     min="0"
                     max="1"
                     step="0.05"
+                    disabled={!canUpdateWeights}
                     value={tempWeights.trainImpactWeight}
                     onChange={(e) => setTempWeights({ ...tempWeights, trainImpactWeight: Number(e.target.value) })}
                     className="w-full"
@@ -267,6 +311,7 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
                     min="0"
                     max="1"
                     step="0.05"
+                    disabled={!canUpdateWeights}
                     value={tempWeights.delayWeight}
                     onChange={(e) => setTempWeights({ ...tempWeights, delayWeight: Number(e.target.value) })}
                     className="w-full"
@@ -280,14 +325,23 @@ export const OptimizerStudio: React.FC<OptimizerStudioProps> = ({
                   onClick={() => setShowWeightsModal(false)}
                   className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700"
                 >
-                  Cancel
+                  {canUpdateWeights ? 'Cancel' : 'Close'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-500 shadow"
-                >
-                  Save & Apply Weights
-                </button>
+                {canUpdateWeights ? (
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-500 shadow"
+                  >
+                    Save & Apply Weights
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="px-4 py-2 bg-slate-800 text-slate-500 rounded-lg border border-slate-700 cursor-not-allowed text-xs font-semibold"
+                  >
+                    Admin Authorization Required
+                  </button>
+                )}
               </div>
             </form>
           </div>
