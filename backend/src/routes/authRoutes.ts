@@ -50,6 +50,33 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req: AuthRe
   });
 });
 
+// POST /api/auth/demo-session (Silently issues signed JWT for requested demo role)
+router.post('/demo-session', authLimiter, async (req: AuthRequest, res: Response) => {
+  const requestedRole = req.body?.role || 'ADMIN';
+  const validRoles = ['ADMIN', 'OPERATIONS_CONTROLLER', 'MAINTENANCE_ENGINEER'];
+  const role = validRoles.includes(requestedRole) ? requestedRole : 'ADMIN';
+
+  const users = await repository.getUsers();
+  const user = users.find((u: any) => u.role === role) || users[0];
+
+  if (!user) {
+    return res.status(500).json({ success: false, error: { code: 'NO_DEMO_USER', message: 'No demo user available' } });
+  }
+
+  const token = jwt.sign(
+    { id: user.id, username: user.username, role: user.role, department: user.department },
+    env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  const { passwordHash, ...userWithoutPassword } = user;
+
+  res.json({
+    token,
+    user: userWithoutPassword,
+  });
+});
+
 // GET /api/auth/me (Authenticated user profile)
 router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id;

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserRole, User } from './types';
+import { UserRole } from './types';
 import { TabType, Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BannerDisclaimer } from './components/BannerDisclaimer';
-import { Login } from './components/Login';
 
 import { Dashboard } from './components/Dashboard';
 import { CorridorMap } from './components/CorridorMap';
@@ -29,37 +28,9 @@ import {
 } from './services/api';
 
 export function App() {
-  // Session Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return !!localStorage.getItem('sih_auth_token');
-  });
-
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('sih_user');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    const stored = localStorage.getItem('sih_user');
-    if (stored) {
-      try {
-        return JSON.parse(stored).role || 'ADMIN';
-      } catch {
-        return 'ADMIN';
-      }
-    }
-    return 'ADMIN';
-  });
-
+  const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDemoLoading, setIsDemoLoading] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -91,31 +62,7 @@ export function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleLogout = useCallback(() => {
-    authApi.logout();
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setDashboardData(null);
-    showToast('Session logged out.');
-  }, []);
-
-  // Listen to global 401 auth logout events from Axios interceptor
-  useEffect(() => {
-    const onAuthLogout = () => {
-      setIsAuthenticated(false);
-      setCurrentUser(null);
-      setDashboardData(null);
-    };
-    window.addEventListener('sih_auth_logout', onAuthLogout);
-    return () => window.removeEventListener('sih_auth_logout', onAuthLogout);
-  }, []);
-
   const loadAllData = useCallback(async () => {
-    if (!localStorage.getItem('sih_auth_token')) {
-      setIsAuthenticated(false);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const [dashRes, astRes, tskRes, ttRes, ffRes, corRes, plnRes, wgtRes, audRes] = await Promise.all([
@@ -147,26 +94,59 @@ export function App() {
       }
     } catch (err: any) {
       console.error('Failed loading data from Node backend:', err);
-      if (err.response?.status === 401) {
-        handleLogout();
-      }
     } finally {
       setIsLoading(false);
     }
-  }, [handleLogout]);
+  }, []);
 
-  // Load data when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadAllData();
+  // Ensure valid JWT authentication session exists before loading dashboard data
+  const initSessionAndLoad = useCallback(async (roleToUse: UserRole) => {
+    try {
+      let token = localStorage.getItem('sih_auth_token');
+      if (!token) {
+        const sessionRes = await authApi.getDemoSession(roleToUse);
+        token = sessionRes.data.token;
+        if (token) {
+          localStorage.setItem('sih_auth_token', token);
+          localStorage.setItem('sih_user', JSON.stringify(sessionRes.data.user));
+        }
+      }
+      await loadAllData();
+    } catch (err) {
+      console.error('Failed initializing demo session:', err);
+      // Fallback retry
+      try {
+        const fallbackRes = await authApi.getDemoSession(roleToUse);
+        if (fallbackRes.data.token) {
+          localStorage.setItem('sih_auth_token', fallbackRes.data.token);
+          await loadAllData();
+        }
+      } catch (retryErr) {
+        console.error('Session retry failed:', retryErr);
+      }
     }
-  }, [isAuthenticated, loadAllData]);
+  }, [loadAllData]);
 
-  const handleLoginSuccess = (user: User, _token: string) => {
-    setCurrentUser(user);
-    setCurrentRole(user.role);
-    setIsAuthenticated(true);
-    showToast(`Welcome, ${user.name} (${user.role})`);
+  // Initial silent startup
+  useEffect(() => {
+    initSessionAndLoad(currentRole);
+  }, [initSessionAndLoad, currentRole]);
+
+  // Silent role switching: seamlessly obtain signed JWT for the selected role and refresh data
+  const handleRoleChange = async (newRole: UserRole) => {
+    setCurrentRole(newRole);
+    try {
+      const sessionRes = await authApi.getDemoSession(newRole);
+      if (sessionRes.data.token) {
+        localStorage.setItem('sih_auth_token', sessionRes.data.token);
+        localStorage.setItem('sih_user', JSON.stringify(sessionRes.data.user));
+      }
+      await loadAllData();
+      showToast(`Switched active role to ${newRole}`);
+    } catch (err) {
+      console.error('Role switch failed:', err);
+      showToast(`Role switched to ${newRole}`);
+    }
   };
 
   // 1-CLICK SYNTHETIC DEMO SCENARIO EXECUTION
@@ -275,11 +255,6 @@ export function App() {
     }
   };
 
-  // If user is not authenticated, render Login view directly
-  if (!isAuthenticated) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Prototype Disclaimer Banner */}
@@ -288,8 +263,7 @@ export function App() {
       {/* Main Header with User Role & Controls */}
       <Header
         currentRole={currentRole}
-        currentUser={currentUser}
-        onLogout={handleLogout}
+        onRoleChange={handleRoleChange}
         onRunDemo={handleRunDemoScenario}
         isDemoLoading={isDemoLoading}
       />

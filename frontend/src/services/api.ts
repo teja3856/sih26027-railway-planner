@@ -33,11 +33,11 @@ api.interceptors.response.use(
 
 export const authApi = {
   login: (username: string, password: string) => api.post('/auth/login', { username, password }),
+  getDemoSession: (role?: string) => api.post('/auth/demo-session', { role: role || 'ADMIN' }),
   getMe: () => api.get('/auth/me'),
   logout: () => {
     localStorage.removeItem('sih_auth_token');
     localStorage.removeItem('sih_user');
-    window.dispatchEvent(new Event('sih_auth_logout'));
   },
 };
 
