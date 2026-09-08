@@ -95,95 +95,103 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onNavigate, onRunDem
         </div>
 
         {/* 4 Metric Comparisons Side-by-Side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Metric 1: Total Passenger Train Delay */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <span className="text-xs font-semibold text-slate-400">Total Passenger Delay</span>
-            <div className="flex items-baseline justify-between font-mono">
-              <div>
-                <span className="text-xs text-red-400 block font-semibold">BEFORE</span>
-                <span className="text-xl font-bold text-red-400 line-through">
-                  {beforeVsAfter.before.totalDelayMinutes} min
-                </span>
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3 min-w-0 shadow-sm">
+            <span className="text-xs font-semibold text-slate-400 block truncate">Total Passenger Delay</span>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 font-mono">
+              <div className="min-w-0">
+                <span className="text-[10px] text-red-400 block font-bold uppercase tracking-wider">BEFORE</span>
+                <div className="text-red-400 font-bold line-through leading-tight">
+                  <span className="text-base">{beforeVsAfter.before.totalDelayMinutes}</span>{' '}
+                  <span className="text-xs font-normal">min</span>
+                </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-600" />
-              <div className="text-right">
-                <span className="text-xs text-emerald-400 block font-semibold">AFTER (AI)</span>
-                <span className="text-2xl font-black text-emerald-400">
-                  {beforeVsAfter.after.totalDelayMinutes} min
-                </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-600 shrink-0 mx-auto" />
+              <div className="min-w-0 text-right">
+                <span className="text-[10px] text-emerald-400 block font-bold uppercase tracking-wider">AFTER (AI)</span>
+                <div className="text-emerald-400 font-black leading-tight">
+                  <span className="text-xl font-black">{beforeVsAfter.after.totalDelayMinutes}</span>{' '}
+                  <span className="text-xs font-semibold">min</span>
+                </div>
               </div>
             </div>
-            <div className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center">
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center leading-tight">
               ↓ {Math.round(((beforeVsAfter.before.totalDelayMinutes - beforeVsAfter.after.totalDelayMinutes) / beforeVsAfter.before.totalDelayMinutes) * 100)}% Delay Reduction
             </div>
           </div>
 
           {/* Metric 2: Affected Passenger Trains */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <span className="text-xs font-semibold text-slate-400">Affected Passenger Trains</span>
-            <div className="flex items-baseline justify-between font-mono">
-              <div>
-                <span className="text-xs text-red-400 block font-semibold">BEFORE</span>
-                <span className="text-xl font-bold text-red-400 line-through">
-                  {beforeVsAfter.before.affectedTrainsCount} Trains
-                </span>
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3 min-w-0 shadow-sm">
+            <span className="text-xs font-semibold text-slate-400 block truncate">Affected Passenger Trains</span>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 font-mono">
+              <div className="min-w-0">
+                <span className="text-[10px] text-red-400 block font-bold uppercase tracking-wider">BEFORE</span>
+                <div className="text-red-400 font-bold line-through leading-tight">
+                  <span className="text-base">{beforeVsAfter.before.affectedTrainsCount}</span>{' '}
+                  <span className="text-xs font-normal">Trains</span>
+                </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-600" />
-              <div className="text-right">
-                <span className="text-xs text-emerald-400 block font-semibold">AFTER (AI)</span>
-                <span className="text-2xl font-black text-emerald-400">
-                  {beforeVsAfter.after.affectedTrainsCount} Trains
-                </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-600 shrink-0 mx-auto" />
+              <div className="min-w-0 text-right">
+                <span className="text-[10px] text-emerald-400 block font-bold uppercase tracking-wider">AFTER (AI)</span>
+                <div className="text-emerald-400 font-black leading-tight">
+                  <span className="text-xl font-black">{beforeVsAfter.after.affectedTrainsCount}</span>{' '}
+                  <span className="text-xs font-semibold">Trains</span>
+                </div>
               </div>
             </div>
-            <div className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center">
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center leading-tight">
               ↓ {beforeVsAfter.before.affectedTrainsCount - beforeVsAfter.after.affectedTrainsCount} Fewer Interrupted Trains
             </div>
           </div>
 
           {/* Metric 3: Total Asset Downtime Hours */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <span className="text-xs font-semibold text-slate-400">Corridor Downtime Hours</span>
-            <div className="flex items-baseline justify-between font-mono">
-              <div>
-                <span className="text-xs text-red-400 block font-semibold">BEFORE</span>
-                <span className="text-xl font-bold text-red-400 line-through">
-                  {beforeVsAfter.before.assetDowntimeHours} hrs
-                </span>
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3 min-w-0 shadow-sm">
+            <span className="text-xs font-semibold text-slate-400 block truncate">Corridor Downtime Hours</span>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 font-mono">
+              <div className="min-w-0">
+                <span className="text-[10px] text-red-400 block font-bold uppercase tracking-wider">BEFORE</span>
+                <div className="text-red-400 font-bold line-through leading-tight">
+                  <span className="text-base">{beforeVsAfter.before.assetDowntimeHours}</span>{' '}
+                  <span className="text-xs font-normal">hrs</span>
+                </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-600" />
-              <div className="text-right">
-                <span className="text-xs text-emerald-400 block font-semibold">AFTER (AI)</span>
-                <span className="text-2xl font-black text-emerald-400">
-                  {beforeVsAfter.after.assetDowntimeHours} hrs
-                </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-600 shrink-0 mx-auto" />
+              <div className="min-w-0 text-right">
+                <span className="text-[10px] text-emerald-400 block font-bold uppercase tracking-wider">AFTER (AI)</span>
+                <div className="text-emerald-400 font-black leading-tight">
+                  <span className="text-xl font-black">{beforeVsAfter.after.assetDowntimeHours}</span>{' '}
+                  <span className="text-xs font-semibold">hrs</span>
+                </div>
               </div>
             </div>
-            <div className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center">
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center leading-tight">
               Joint Block Coordination Efficiency
             </div>
           </div>
 
-          {/* Metric 4: Unresolved Operational Conflicts */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <span className="text-xs font-semibold text-slate-400">Schedule Conflicts</span>
-            <div className="flex items-baseline justify-between font-mono">
-              <div>
-                <span className="text-xs text-red-400 block font-semibold">BEFORE</span>
-                <span className="text-xl font-bold text-red-400 line-through">
-                  {beforeVsAfter.before.conflictCount} Conflicts
-                </span>
+          {/* Metric 4: Schedule Conflicts */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3 min-w-0 shadow-sm">
+            <span className="text-xs font-semibold text-slate-400 block truncate">Schedule Conflicts</span>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 font-mono">
+              <div className="min-w-0">
+                <span className="text-[10px] text-red-400 block font-bold uppercase tracking-wider">BEFORE</span>
+                <div className="text-red-400 font-bold line-through leading-tight">
+                  <span className="text-base">{beforeVsAfter.before.conflictCount}</span>{' '}
+                  <span className="text-xs font-normal">Conflicts</span>
+                </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-600" />
-              <div className="text-right">
-                <span className="text-xs text-emerald-400 block font-semibold">AFTER (AI)</span>
-                <span className="text-2xl font-black text-emerald-400">
-                  {beforeVsAfter.after.conflictCount} Conflicts
-                </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-600 shrink-0 mx-auto" />
+              <div className="min-w-0 text-right">
+                <span className="text-[10px] text-emerald-400 block font-bold uppercase tracking-wider">AFTER (AI)</span>
+                <div className="text-emerald-400 font-black leading-tight">
+                  <span className="text-xl font-black">{beforeVsAfter.after.conflictCount}</span>{' '}
+                  <span className="text-xs font-semibold">Conflicts</span>
+                </div>
               </div>
             </div>
-            <div className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center">
+            <div className="text-[10px] sm:text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-center leading-tight">
               100% Conflict Resolution
             </div>
           </div>
