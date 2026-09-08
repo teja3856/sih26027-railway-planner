@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { repository } from '../repositories/InMemoryRepository';
+import { repository } from '../repositories';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 
 const router = Router();

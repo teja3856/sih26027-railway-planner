@@ -1,5 +1,5 @@
-import React from 'react';
-import { FileSpreadsheet, Download, CheckCircle, BarChart3 } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileSpreadsheet, Download, CheckCircle, BarChart3, Loader2, AlertCircle } from 'lucide-react';
 import { reportsApi } from '../services/api';
 import { BlockPlan } from '../types';
 
@@ -9,11 +9,38 @@ interface AnalyticsReportsProps {
 
 export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({ plans }) => {
   const activePlan = plans[0];
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportStatus, setExportStatus] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
 
-  const handleDownloadCsv = () => {
-    if (!activePlan) return;
-    const url = reportsApi.getExportCsvUrl(activePlan.id);
-    window.open(url, '_blank');
+  const handleDownloadCsv = async () => {
+    if (!activePlan || isExporting) return;
+    setIsExporting(true);
+    setExportStatus(null);
+
+    try {
+      const response = await reportsApi.exportPlanCsv(activePlan.id);
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `railway-block-plan-report-${activePlan.id}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setExportStatus({ type: 'success', message: 'Report exported and downloaded successfully.' });
+      setTimeout(() => setExportStatus(null), 4000);
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setExportStatus({ type: 'error', message: 'Authentication required. Please sign in to export official reports.' });
+      } else if (err.response?.status === 403) {
+        setExportStatus({ type: 'error', message: 'Insufficient role permissions to export reports.' });
+      } else {
+        setExportStatus({ type: 'error', message: err.response?.data?.error?.message || 'Failed to download block plan report.' });
+      }
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -33,13 +60,23 @@ export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({ plans }) => 
         {activePlan && (
           <button
             onClick={handleDownloadCsv}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center space-x-2 shadow-lg shadow-emerald-600/30 transition-all"
+            disabled={isExporting}
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center space-x-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" />
-            <span>EXPORT BLOCK PLAN REPORT (CSV)</span>
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            <span>{isExporting ? 'EXPORTING...' : 'EXPORT BLOCK PLAN REPORT (CSV)'}</span>
           </button>
         )}
       </div>
+
+      {exportStatus && (
+        <div className={`p-3 rounded-lg border text-xs flex items-center space-x-2 ${
+          exportStatus.type === 'success' ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-300' : 'bg-rose-950/50 border-rose-500/30 text-rose-300'
+        }`}>
+          {exportStatus.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
+          <span>{exportStatus.message}</span>
+        </div>
+      )}
 
       {/* Report Preview */}
       {activePlan && (

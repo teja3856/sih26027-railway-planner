@@ -93,6 +93,10 @@ export const analyticsApi = {
 export const reportsApi = {
   getSummary: (params?: any) => api.get('/reports/plan-summary', { params }),
   getExportCsvUrl: (planId: string) => `${API_BASE_URL}/reports/plan-summary?planId=${planId}&format=csv`,
+  exportPlanCsv: (planId: string) => api.get('/reports/plan-summary', {
+    params: { planId, format: 'csv' },
+    responseType: 'blob',
+  }),
 };
 
 export const auditApi = {
