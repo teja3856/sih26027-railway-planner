@@ -1,0 +1,419 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// ENUMS
+// ──────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  OPERATIONS_CONTROLLER
+  MAINTENANCE_ENGINEER
+}
+
+enum Department {
+  ENGINEERING
+  TRACTION_DISTRIBUTION
+  SIGNAL_TELECOM
+  OPERATIONS
+}
+
+enum AssetType {
+  TRACK
+  OHE_LINE
+  SIGNAL
+  TELECOM
+  SWITCH
+  CROSSING
+  BRIDGE
+}
+
+enum Criticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DefectSeverity {
+  MINOR
+  MAJOR
+  SEVERE
+  CRITICAL
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  DEFECT_RECTIFICATION
+  OVERHAUL
+}
+
+enum TaskStatus {
+  PENDING
+  PRIORITIZED
+  SCHEDULED
+  APPROVED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TrainType {
+  PASSENGER
+  EXPRESS
+  SUPERFAST
+  FREIGHT
+}
+
+enum TrafficLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  RESTRICTED
+}
+
+enum BlockApprovalStatus {
+  PROPOSED
+  APPROVED
+  MODIFIED
+  REJECTED
+}
+
+enum ConflictType {
+  TRAIN_VS_BLOCK
+  GOODS_VS_BLOCK
+  MAINT_VS_MAINT
+  RESOURCE_CONFLICT
+  CORRIDOR_CAPACITY
+  ASSET_LOCK
+  TIME_WINDOW
+  EXISTING_BLOCK
+}
+
+enum PlanningHorizon {
+  WEEKLY
+  MONTHLY
+}
+
+enum PlanStatus {
+  DRAFT
+  OPTIMIZED
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  DEFECT
+  CONFLICT
+  APPROVAL
+  SYSTEM
+}
+
+// ──────────────────────────────────────────────
+// MODELS
+// ──────────────────────────────────────────────
+
+model User {
+  id           String     @id
+  username     String     @unique
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole
+  department   Department
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@index([role])
+  @@index([department])
+}
+
+model Corridor {
+  id           String @id
+  code         String @unique
+  name         String
+  startStation String
+  endStation   String
+  lengthKm     Float
+  totalTracks  Int
+
+  assets                 Asset[]
+  trainSchedules         TrainSchedule[]
+  goodsTrainForecasts    GoodsTrainForecast[]
+  corridorAvailabilities CorridorAvailability[]
+  maintenanceBlocks      MaintenanceBlock[]
+}
+
+model Asset {
+  id                  String      @id
+  assetCode           String      @unique
+  name                String
+  assetType           AssetType
+  department          Department
+  corridorId          String
+  location            String
+  criticality         Criticality
+  conditionScore      Float       // 0-100
+  availability        Float       // percentage
+  lastMaintenanceDate String      // YYYY-MM-DD
+  nextDueDate         String      // YYYY-MM-DD
+  hasDefect           Boolean     @default(false)
+
+  corridor   Corridor           @relation(fields: [corridorId], references: [id])
+  defects    AssetDefect[]
+  tasks      MaintenanceTask[]
+  histories  MaintenanceHistory[]
+
+  @@index([corridorId])
+  @@index([department])
+  @@index([criticality])
+  @@index([hasDefect])
+}
+
+model AssetDefect {
+  id                  String        @id
+  assetId             String
+  defectType          String
+  description         String
+  severity            DefectSeverity
+  speedRestrictionKmh Int?
+  reportedAt          String        // "YYYY-MM-DD HH:mm"
+  reportedBy          String
+  isResolved          Boolean       @default(false)
+
+  asset Asset                       @relation(fields: [assetId], references: [id])
+  tasks MaintenanceTask[]
+
+  @@index([assetId])
+  @@index([severity])
+  @@index([isResolved])
+}
+
+model MaintenanceTask {
+  id                       String          @id
+  taskId                   String          @unique  // MT-001
+  assetId                  String
+  department               Department
+  maintenanceType          MaintenanceType
+  description              String
+  defectId                 String?
+  priorityScore            Float           // 0-100
+  criticality              Criticality
+  urgency                  Criticality
+  estimatedDurationMinutes Int
+  requiredResources        String[]        // Postgres text array
+  preferredWindowStart     String          // HH:mm
+  preferredWindowEnd       String          // HH:mm
+  deadline                 String          // YYYY-MM-DD
+  status                   TaskStatus      @default(PENDING)
+  createdAt                String          // YYYY-MM-DD
+
+  asset  Asset        @relation(fields: [assetId], references: [id])
+  defect AssetDefect? @relation(fields: [defectId], references: [id])
+  blocks MaintenanceBlock[]
+
+  @@index([assetId])
+  @@index([department])
+  @@index([status])
+  @@index([criticality])
+  @@index([priorityScore])
+}
+
+model MaintenanceHistory {
+  id               String @id
+  assetId          String
+  taskId           String
+  completedAt      String
+  downtimeMinutes  Int
+  engineerInCharge String
+  remarks          String
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@index([assetId])
+}
+
+model Train {
+  id           String    @id
+  trainNumber  String    @unique
+  trainName    String
+  trainType    TrainType
+  priorityRank Int
+
+  schedules TrainSchedule[]
+
+  @@index([trainType])
+}
+
+model TrainSchedule {
+  id            String    @id
+  trainId       String
+  trainNumber   String
+  trainName     String
+  trainType     TrainType
+  corridorId    String
+  origin        String
+  destination   String
+  arrivalTime   String    // HH:mm
+  departureTime String    // HH:mm
+  dayOfWeek     String
+  isDaily       Boolean   @default(true)
+
+  train    Train    @relation(fields: [trainId], references: [id])
+  corridor Corridor @relation(fields: [corridorId], references: [id])
+
+  @@index([corridorId])
+  @@index([trainType])
+}
+
+model GoodsTrainForecast {
+  id                  String       @id
+  corridorId          String
+  forecastDate        String       // YYYY-MM-DD
+  timeSlot            String       // "00:00-04:00"
+  expectedTrainsCount Int
+  trafficLevel        TrafficLevel
+
+  corridor Corridor @relation(fields: [corridorId], references: [id])
+
+  @@index([corridorId])
+  @@index([forecastDate])
+}
+
+model CorridorAvailability {
+  id              String             @id
+  corridorId      String
+  timeSlot        String
+  status          AvailabilityStatus
+  trafficDensity  TrafficLevel
+
+  corridor Corridor @relation(fields: [corridorId], references: [id])
+
+  @@index([corridorId])
+}
+
+model BlockPlan {
+  id                     String          @id
+  planName               String
+  horizonType            PlanningHorizon
+  startDate              String          // YYYY-MM-DD
+  endDate                String          // YYYY-MM-DD
+  status                 PlanStatus      @default(DRAFT)
+  totalOptimizationScore Float
+
+  metrics       Json
+  beforeMetrics Json?
+
+  createdAt String
+  updatedAt String
+
+  blocks MaintenanceBlock[]
+
+  @@index([status])
+}
+
+model MaintenanceBlock {
+  id                    String              @id
+  planId                String
+  taskId                String
+  corridorId            String
+  scheduledStartTime    String              // "YYYY-MM-DD HH:mm"
+  scheduledEndTime      String              // "YYYY-MM-DD HH:mm"
+  durationMinutes       Int
+  isJointBlock          Boolean             @default(false)
+  coordinatingDepts     Department[]
+  affectedPassengerTrains Int               @default(0)
+  affectedGoodsTrains   Int                 @default(0)
+  expectedDelayMinutes  Int                 @default(0)
+  assetCriticality      Criticality
+  urgency               Criticality
+  conflictsCount        Int                 @default(0)
+  optimizationScore     Float
+  recommendationReason  String
+  approvalStatus        BlockApprovalStatus @default(PROPOSED)
+  modifiedBy            String?
+  modifiedAt            String?
+
+  plan      BlockPlan        @relation(fields: [planId], references: [id])
+  task      MaintenanceTask  @relation(fields: [taskId], references: [id])
+  corridor  Corridor         @relation(fields: [corridorId], references: [id])
+  conflicts BlockConflict[]
+
+  @@index([planId])
+  @@index([corridorId])
+  @@index([approvalStatus])
+}
+
+model BlockConflict {
+  id             String       @id
+  blockId        String
+  conflictType   ConflictType
+  severity       Criticality
+  description    String
+  affectedEntity String
+
+  block MaintenanceBlock @relation(fields: [blockId], references: [id])
+
+  @@index([blockId])
+}
+
+model OptimizationWeight {
+  id                       String  @id
+  assetCriticalityWeight   Float   @default(0.25)
+  maintenanceUrgencyWeight Float   @default(0.25)
+  trainImpactWeight        Float   @default(0.15)
+  delayWeight              Float   @default(0.15)
+  conflictWeight           Float   @default(0.10)
+  assetDowntimeWeight      Float   @default(0.05)
+  blockUtilizationWeight   Float   @default(0.05)
+  isDefault                Boolean @default(true)
+}
+
+model Notification {
+  id        String           @id
+  userId    String?
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt String           // "YYYY-MM-DD HH:mm"
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id         String   @id
+  userId     String
+  username   String
+  userRole   UserRole
+  action     String
+  entityType String
+  entityId   String
+  details    String
+  timestamp  String   // "YYYY-MM-DD HH:mm:ss"
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+}
