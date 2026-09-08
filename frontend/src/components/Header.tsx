@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole } from '../types';
-import { Train, Play, UserCheck, Bell, RefreshCw, Cpu } from 'lucide-react';
+import { UserRole, User } from '../types';
+import { Train, Play, UserCheck, Bell, RefreshCw, LogOut, Shield } from 'lucide-react';
 
 interface HeaderProps {
   currentRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
+  currentUser: User | null;
+  onLogout: () => void;
   onRunDemo: () => void;
   isDemoLoading: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
-  onRoleChange,
+  currentUser,
+  onLogout,
   onRunDemo,
   isDemoLoading,
 }) => {
@@ -26,6 +28,19 @@ export const Header: React.FC<HeaderProps> = ({
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const getRoleBadge = (role: UserRole) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'bg-sky-950 text-sky-400 border-sky-800';
+      case 'OPERATIONS_CONTROLLER':
+        return 'bg-purple-950 text-purple-400 border-purple-800';
+      case 'MAINTENANCE_ENGINEER':
+        return 'bg-emerald-950 text-emerald-400 border-emerald-800';
+      default:
+        return 'bg-slate-800 text-slate-300 border-slate-700';
+    }
+  };
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-md">
@@ -65,27 +80,34 @@ export const Header: React.FC<HeaderProps> = ({
           <span>{isDemoLoading ? 'OPTIMIZING DEMO...' : 'RUN SYNTHETIC DEMO SCENARIO'}</span>
         </button>
 
-        {/* Role Switcher */}
-        <div className="flex items-center bg-slate-800/80 p-1 rounded-lg border border-slate-700">
-          <UserCheck className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1" />
-          <span className="text-[11px] font-semibold text-slate-400 mr-2">ROLE:</span>
-          {(['ADMIN', 'OPERATIONS_CONTROLLER', 'MAINTENANCE_ENGINEER'] as UserRole[]).map((role) => (
-            <button
-              key={role}
-              onClick={() => onRoleChange(role)}
-              className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition-all ${
-                currentRole === role
-                  ? 'bg-sky-600 text-white font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-              }`}
-            >
-              {role === 'ADMIN' ? 'ADMIN' : role === 'OPERATIONS_CONTROLLER' ? 'CONTROLLER' : 'ENGINEER'}
-            </button>
-          ))}
+        {/* Authenticated User Session Badge */}
+        <div className="flex items-center bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 space-x-2.5">
+          <Shield className="w-4 h-4 text-sky-400" />
+          <div className="text-left">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-bold text-slate-100">{currentUser?.name || currentUser?.username || 'Authenticated User'}</span>
+              <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadge(currentRole)}`}>
+                {currentRole}
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 block font-mono">
+              Dept: {currentUser?.department || 'OPERATIONS'}
+            </span>
+          </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={onLogout}
+            title="Sign out of Rail-Block session"
+            className="ml-2 text-slate-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-950/40 hover:border-red-800/60 border border-transparent transition-all flex items-center space-x-1 text-xs font-semibold"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-[11px]">LOGOUT</span>
+          </button>
         </div>
 
         {/* Live Clock & Notifications */}
-        <div className="hidden lg:flex items-center space-x-3 text-xs font-mono text-slate-400 border-l border-slate-800 pl-4">
+        <div className="hidden xl:flex items-center space-x-3 text-xs font-mono text-slate-400 border-l border-slate-800 pl-4">
           <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800 text-sky-400 font-bold">
             {time || '17:00:00'}
           </div>

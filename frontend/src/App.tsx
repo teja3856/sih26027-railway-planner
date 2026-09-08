@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { UserRole } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserRole, User } from './types';
 import { TabType, Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BannerDisclaimer } from './components/BannerDisclaimer';
+import { Login } from './components/Login';
 
 import { Dashboard } from './components/Dashboard';
 import { CorridorMap } from './components/CorridorMap';
@@ -24,12 +25,41 @@ import {
   syntheticApi,
   analyticsApi,
   auditApi,
+  authApi,
 } from './services/api';
 
 export function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
+  // Session Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('sih_auth_token');
+  });
+
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('sih_user');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    const stored = localStorage.getItem('sih_user');
+    if (stored) {
+      try {
+        return JSON.parse(stored).role || 'ADMIN';
+      } catch {
+        return 'ADMIN';
+      }
+    }
+    return 'ADMIN';
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDemoLoading, setIsDemoLoading] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -61,7 +91,31 @@ export function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const loadAllData = async () => {
+  const handleLogout = useCallback(() => {
+    authApi.logout();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setDashboardData(null);
+    showToast('Session logged out.');
+  }, []);
+
+  // Listen to global 401 auth logout events from Axios interceptor
+  useEffect(() => {
+    const onAuthLogout = () => {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      setDashboardData(null);
+    };
+    window.addEventListener('sih_auth_logout', onAuthLogout);
+    return () => window.removeEventListener('sih_auth_logout', onAuthLogout);
+  }, []);
+
+  const loadAllData = useCallback(async () => {
+    if (!localStorage.getItem('sih_auth_token')) {
+      setIsAuthenticated(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const [dashRes, astRes, tskRes, ttRes, ffRes, corRes, plnRes, wgtRes, audRes] = await Promise.all([
@@ -77,53 +131,61 @@ export function App() {
       ]);
 
       setDashboardData(dashRes.data);
-      setAssets(astRes.data);
-      setTasks(tskRes.data);
-      setSchedules(ttRes.data);
-      setFreightForecasts(ffRes.data);
-      setCorridors(corRes.data);
-      setPlans(plnRes.data);
+      setAssets(astRes.data || []);
+      setTasks(tskRes.data || []);
+      setSchedules(ttRes.data || []);
+      setFreightForecasts(ffRes.data || []);
+      setCorridors(corRes.data || []);
+      setPlans(plnRes.data || []);
       if (wgtRes.data) setWeights(wgtRes.data);
-      setAuditLogs(audRes.data);
+      setAuditLogs(audRes.data || []);
 
       if (plnRes.data && plnRes.data[0]) {
         const fullPlanRes = await plansApi.getPlanById(plnRes.data[0].id);
         setBlocks(fullPlanRes.data.blocks || []);
         setConflicts(fullPlanRes.data.conflicts || []);
       }
-    } catch (err) {
-      console.error('Failed loading data from Node backend', err);
+    } catch (err: any) {
+      console.error('Failed loading data from Node backend:', err);
+      if (err.response?.status === 401) {
+        handleLogout();
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleLogout]);
 
+  // Load data when authenticated
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (isAuthenticated) {
+      loadAllData();
+    }
+  }, [isAuthenticated, loadAllData]);
+
+  const handleLoginSuccess = (user: User, _token: string) => {
+    setCurrentUser(user);
+    setCurrentRole(user.role);
+    setIsAuthenticated(true);
+    showToast(`Welcome, ${user.name} (${user.role})`);
+  };
 
   // 1-CLICK SYNTHETIC DEMO SCENARIO EXECUTION
   const handleRunDemoScenario = async () => {
     setIsDemoLoading(true);
     try {
-      // 1. Seed synthetic data
       await syntheticApi.seed();
-      
-      // 2. Trigger automatic AI optimizer
       const optRes = await optimizationApi.generatePlan({
         horizonType: 'WEEKLY',
         startDate: '2026-09-09',
         endDate: '2026-09-15',
       });
 
-      // 3. Refresh views
       await loadAllData();
       setActiveTab('dashboard');
 
-      const beforeDelay = optRes.data.plan?.beforeMetrics?.totalDelayMinutes || 135;
-      const afterDelay = optRes.data.plan?.metrics?.totalDelayMinutes || 27;
-
-      showToast(`✨ Demo Scenario Executed! Passenger delay reduced from ${beforeDelay} min to ${afterDelay} min.`);
+      const before = optRes.data.plan?.beforeMetrics?.totalDelayMinutes || 135;
+      const after = optRes.data.plan?.metrics?.totalDelayMinutes || 27;
+      showToast(`✨ Demo Scenario Executed! Passenger delay reduced from ${before} min to ${after} min.`);
     } catch (err) {
       console.error('Demo execution failed', err);
       showToast('Demo execution failed. Please check backend connection.');
@@ -132,7 +194,7 @@ export function App() {
     }
   };
 
-  // Task creation handler
+  // CREATE TASK
   const handleCreateTask = async (taskData: any) => {
     try {
       await tasksApi.createTask(taskData);
@@ -143,7 +205,7 @@ export function App() {
     }
   };
 
-  // Defect report handler
+  // REPORT DEFECT
   const handleReportDefect = async (assetId: string, defectData: any) => {
     try {
       await assetsApi.reportDefect(assetId, defectData);
@@ -154,11 +216,11 @@ export function App() {
     }
   };
 
-  // Generate Plan Handler
+  // RUN OPTIMIZER
   const handleGeneratePlan = async (horizon: 'WEEKLY' | 'MONTHLY') => {
     setIsDemoLoading(true);
     try {
-      const res = await optimizationApi.generatePlan({ horizonType: horizon });
+      await optimizationApi.generatePlan({ horizonType: horizon });
       await loadAllData();
       setActiveTab('optimizer');
       showToast(`Generated ${horizon} automatic block schedule.`);
@@ -169,7 +231,7 @@ export function App() {
     }
   };
 
-  // Update weights
+  // UPDATE OPTIMIZATION WEIGHTS
   const handleUpdateWeights = async (newWeights: any) => {
     try {
       await optimizationApi.updateWeights(newWeights);
@@ -180,10 +242,10 @@ export function App() {
     }
   };
 
-  // Modify block
-  const handleModifyBlock = async (planId: string, blockId: string, data: any) => {
+  // MANUAL BLOCK ADJUSTMENT
+  const handleModifyBlock = async (planId: string, blockId: string, patchData: any) => {
     try {
-      await plansApi.modifyBlock(planId, blockId, data);
+      await plansApi.modifyBlock(planId, blockId, patchData);
       await loadAllData();
       showToast('Block timing modified & metrics recalculated.');
     } catch (err) {
@@ -191,7 +253,7 @@ export function App() {
     }
   };
 
-  // Approve plan
+  // APPROVE PLAN (OPERATIONS CONTROLLER / ADMIN)
   const handleApprovePlan = async (planId: string) => {
     try {
       await plansApi.approvePlan(planId);
@@ -202,7 +264,7 @@ export function App() {
     }
   };
 
-  // Reject plan
+  // REJECT PLAN
   const handleRejectPlan = async (planId: string) => {
     try {
       await plansApi.rejectPlan(planId);
@@ -213,29 +275,35 @@ export function App() {
     }
   };
 
+  // If user is not authenticated, render Login view directly
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Official Disclaimer Banner */}
+      {/* Top Prototype Disclaimer Banner */}
       <BannerDisclaimer />
 
-      {/* Control Room Header */}
+      {/* Main Header with User Role & Controls */}
       <Header
         currentRole={currentRole}
-        onRoleChange={setCurrentRole}
+        currentUser={currentUser}
+        onLogout={handleLogout}
         onRunDemo={handleRunDemoScenario}
         isDemoLoading={isDemoLoading}
       />
 
-      {/* Main Body Shell */}
+      {/* Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Navigation */}
+        {/* Left Sidebar */}
         <Sidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}
           conflictsCount={conflicts.length}
         />
 
-        {/* Content Area */}
+        {/* Dynamic Main Workspace View */}
         <main className="flex-1 bg-slate-950 overflow-hidden relative">
           {/* Toast Notification Popup */}
           {toastMessage && (

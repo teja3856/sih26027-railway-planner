@@ -18,9 +18,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Response Interceptor to handle expired or invalid JWT (401)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401 && !error.config?.url?.includes('/auth/login')) {
+      localStorage.removeItem('sih_auth_token');
+      localStorage.removeItem('sih_user');
+      window.dispatchEvent(new Event('sih_auth_logout'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authApi = {
   login: (username: string, password: string) => api.post('/auth/login', { username, password }),
   getMe: () => api.get('/auth/me'),
+  logout: () => {
+    localStorage.removeItem('sih_auth_token');
+    localStorage.removeItem('sih_user');
+    window.dispatchEvent(new Event('sih_auth_logout'));
+  },
 };
 
 export const assetsApi = {
